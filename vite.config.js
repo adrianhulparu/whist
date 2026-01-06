@@ -9,7 +9,7 @@ export default defineConfig({
     host: true, // Listen on all network interfaces
     port: 5173, // Default Vite port
   },
-  base: process.env.NODE_ENV === 'production' ? '/REPO_NAME/' : '/', // Replace REPO_NAME with your actual repo name
+  base: process.env.NODE_ENV === 'production' ? '/whist/' : '/', // Replace REPO_NAME with your actual repo name
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
