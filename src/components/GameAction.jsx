@@ -6,8 +6,8 @@ import { getCardsForRound, getDealerForRound, getFirstBidder, validateLastBid } 
 import { cn } from "@/lib/utils"
 
 export function GameAction({ gameState, onNextStep, onBid, onTricks, onReplayRound, onSelectPlayer }) {
-  const { players, currentRound, bids, tricks, phase } = gameState
-  const cardsDealt = getCardsForRound(currentRound, players.length)
+  const { players, currentRound, bids, tricks, phase, gameMode } = gameState
+  const cardsDealt = getCardsForRound(currentRound, players.length, gameMode || "classic")
   const dealerIndex = getDealerForRound(currentRound, players.length)
   const firstBidder = getFirstBidder(currentRound, players.length)
 

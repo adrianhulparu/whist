@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 export function PlayerSetup({ onStartGame }) {
   const [players, setPlayers] = useState(["", "", "", ""])
   const [numPlayers, setNumPlayers] = useState(4)
+  const [gameMode, setGameMode] = useState("classic") // "classic" or "alternative"
 
   const handleNumPlayersChange = (newNum) => {
     if (newNum >= 4 && newNum <= 6) {
@@ -31,7 +32,7 @@ export function PlayerSetup({ onStartGame }) {
 
   const handleStart = () => {
     if (players.every((name) => name.trim() !== "")) {
-      onStartGame(players.map((name) => name.trim()))
+      onStartGame(players.map((name) => name.trim()), gameMode)
     }
   }
 
@@ -45,6 +46,26 @@ export function PlayerSetup({ onStartGame }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label>Mod de joc</Label>
+          <div className="flex gap-2">
+            <Button
+              variant={gameMode === "classic" ? "default" : "outline"}
+              onClick={() => setGameMode("classic")}
+              className="flex-1"
+            >
+              Clasic
+            </Button>
+            <Button
+              variant={gameMode === "alternative" ? "default" : "outline"}
+              onClick={() => setGameMode("alternative")}
+              className="flex-1"
+            >
+              Alternativ
+            </Button>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <Label>Numar de jucatori</Label>
           <div className="flex gap-2">

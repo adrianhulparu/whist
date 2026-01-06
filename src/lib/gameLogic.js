@@ -1,15 +1,48 @@
 /**
- * Calculate the total number of rounds based on number of players
+ * Calculate the total number of rounds based on number of players and game mode
  */
-export function calculateTotalRounds(numPlayers) {
+export function calculateTotalRounds(numPlayers, gameMode = "classic") {
+  if (gameMode === "alternative") {
+    // X rounds of 8, then 7-2 (6 rounds), then X rounds of 1, then 2-7 (6 rounds), then X rounds of 8
+    return numPlayers + 6 + numPlayers + 6 + numPlayers;
+  }
+  // Classic: 12 + 3 * numPlayers
   return 12 + 3 * numPlayers;
 }
 
 /**
  * Calculate how many cards should be dealt in a given round
  */
-export function getCardsForRound(roundIndex, numPlayers) {
-  const totalRounds = calculateTotalRounds(numPlayers);
+export function getCardsForRound(roundIndex, numPlayers, gameMode = "classic") {
+  if (gameMode === "alternative") {
+    // First X rounds: 8 cards each
+    if (roundIndex < numPlayers) {
+      return 8;
+    }
+    
+    // Next 6 rounds: 7, 6, 5, 4, 3, 2
+    if (roundIndex < numPlayers + 6) {
+      const position = roundIndex - numPlayers;
+      return 7 - position;
+    }
+    
+    // Next X rounds: 1 card each
+    if (roundIndex < numPlayers + 6 + numPlayers) {
+      return 1;
+    }
+    
+    // Next 6 rounds: 2, 3, 4, 5, 6, 7
+    if (roundIndex < numPlayers + 6 + numPlayers + 6) {
+      const position = roundIndex - (numPlayers + 6 + numPlayers);
+      return position + 2;
+    }
+    
+    // Last X rounds: 8 cards each
+    return 8;
+  }
+  
+  // Classic mode
+  const totalRounds = calculateTotalRounds(numPlayers, gameMode);
   
   // First X rounds: 1 card each
   if (roundIndex < numPlayers) {

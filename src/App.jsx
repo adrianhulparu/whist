@@ -19,16 +19,21 @@ function App() {
   useEffect(() => {
     const saved = loadGameState()
     if (saved) {
+      // Ensure backward compatibility: default to "classic" if gameMode is missing
+      if (!saved.gameMode) {
+        saved.gameMode = "classic"
+      }
       setGameState(saved)
     }
   }, [])
 
-      const handleStartGame = (playerNames) => {
+      const handleStartGame = (playerNames, gameMode = "classic") => {
     const numPlayers = playerNames.length
-    const totalRounds = calculateTotalRounds(numPlayers)
+    const totalRounds = calculateTotalRounds(numPlayers, gameMode)
 
     const newGameState = {
       players: playerNames,
+      gameMode: gameMode,
       currentRound: 0,
       phase: "dealer",
       bids: [],
@@ -128,7 +133,7 @@ function App() {
       // Set the trick for the selected player
       newTricks[targetPlayerIndex] = trick
       
-      const cardsDealt = getCardsForRound(prev.currentRound, prev.players.length)
+      const cardsDealt = getCardsForRound(prev.currentRound, prev.players.length, prev.gameMode || "classic")
       const totalTricksSoFar = newTricks.filter(t => t !== null && t !== undefined).reduce((sum, t) => sum + t, 0)
       
       // Find players without tricks entered
@@ -154,7 +159,7 @@ function App() {
       if (allTricksComplete) {
         // Calculate scores
         const roundIndex = prev.currentRound
-        const cardsDealt = getCardsForRound(roundIndex, prev.players.length)
+        const cardsDealt = getCardsForRound(roundIndex, prev.players.length, prev.gameMode || "classic")
         const firstBidder = getFirstBidder(roundIndex, prev.players.length)
         const round = prev.rounds[roundIndex]
 
@@ -165,7 +170,7 @@ function App() {
           for (let i = 0; i < roundIndex; i++) {
             const prevRound = prev.rounds[i]
             if (prevRound && prevRound.completed) {
-              const prevCardsDealt = getCardsForRound(i, prev.players.length)
+              const prevCardsDealt = getCardsForRound(i, prev.players.length, prev.gameMode || "classic")
               const prevFirstBidder = getFirstBidder(i, prev.players.length)
               const prevPlayerBidIndex = prevRound.bids.findIndex(
                 (_, idx) => (prevFirstBidder + idx) % prev.players.length === playerIndex
@@ -176,8 +181,9 @@ function App() {
                 const prevTricks = prevRound.tricks[playerIndex]
                 const prevBonusApplied = prevRound.bonusApplied?.[playerIndex] ?? false
                 
-                // Skip 1-card rounds for consecutive tracking (they reset the count)
-                if (prevCardsDealt === 1) {
+                // In classic mode, skip 1-card rounds for consecutive tracking (they reset the count)
+                // In alternative mode, 1-card rounds count towards consecutive
+                if (prevCardsDealt === 1 && (prev.gameMode || "classic") === "classic") {
                   state = { correct: 0, wrong: 0 }
                 } else {
                   // Update consecutive count, resetting if bonus was applied
@@ -201,12 +207,12 @@ function App() {
           const consecutive = consecutiveStates[playerIndex]
 
           // Check if this would be the 5th consecutive
-          // If it's a 1-card round, don't apply bonus and reset count
-          if (cardsDealt === 1) {
-            // 1-card rounds don't count for bonus/penalty, so use empty consecutive state
+          // In classic mode, 1-card rounds don't apply bonus. In alternative mode, they do.
+          if (cardsDealt === 1 && (prev.gameMode || "classic") === "classic") {
+            // 1-card rounds don't count for bonus/penalty in classic mode, so use empty consecutive state
             const result = calculateScore(bid, tricks, { correct: 0, wrong: 0 })
             scores.push(result.score)
-            bonusApplied.push(false) // No bonus applied on 1-card rounds
+            bonusApplied.push(false) // No bonus applied on 1-card rounds in classic mode
           } else {
             // Regular round - apply bonus if at 5th consecutive
             const result = calculateScore(bid, tricks, consecutive)
@@ -225,7 +231,7 @@ function App() {
         }
 
         const nextRound = roundIndex + 1
-        const totalRounds = calculateTotalRounds(prev.players.length)
+        const totalRounds = calculateTotalRounds(prev.players.length, prev.gameMode || "classic")
         const isGameComplete = nextRound >= totalRounds
 
         return {
@@ -297,7 +303,9 @@ function App() {
               const prevTricks = prevRound.tricks[pIndex]
               const prevBonusApplied = prevRound.bonusApplied?.[pIndex] ?? false
 
-              if (prevCardsDealt === 1) {
+              // In classic mode, 1-card rounds reset consecutive count
+              // In alternative mode, 1-card rounds count towards consecutive
+              if (prevCardsDealt === 1 && (prev.gameMode || "classic") === "classic") {
                 state = { correct: 0, wrong: 0 }
               } else {
                 state = updateConsecutive(prevBid, prevTricks, state, prevBonusApplied)
@@ -319,7 +327,8 @@ function App() {
         const tricks = newTricksArray[pIndex]
         const consecutive = consecutiveStates[pIndex]
 
-        if (cardsDealt === 1) {
+        // In classic mode, 1-card rounds don't apply bonus. In alternative mode, they do.
+        if (cardsDealt === 1 && (prev.gameMode || "classic") === "classic") {
           const result = calculateScore(bid, tricks, { correct: 0, wrong: 0 })
           scores.push(result.score)
           bonusApplied.push(false)
@@ -342,7 +351,7 @@ function App() {
       for (let i = roundIndex + 1; i < updatedRounds.length; i++) {
         const subsequentRound = updatedRounds[i]
         if (subsequentRound && subsequentRound.completed) {
-          const subCardsDealt = getCardsForRound(i, prev.players.length)
+          const subCardsDealt = getCardsForRound(i, prev.players.length, prev.gameMode || "classic")
           const subFirstBidder = getFirstBidder(i, prev.players.length)
 
           const subConsecutiveStates = prev.players.map((_, pIndex) => {
@@ -350,7 +359,7 @@ function App() {
             for (let j = 0; j < i; j++) {
               const prevRound = updatedRounds[j]
               if (prevRound && prevRound.completed) {
-                const prevCardsDealt = getCardsForRound(j, prev.players.length)
+                const prevCardsDealt = getCardsForRound(j, prev.players.length, prev.gameMode || "classic")
                 const prevFirstBidder = getFirstBidder(j, prev.players.length)
                 const prevPlayerBidIndex = prevRound.bids.findIndex(
                   (_, idx) => (prevFirstBidder + idx) % prev.players.length === pIndex
@@ -361,7 +370,9 @@ function App() {
                   const prevTricks = prevRound.tricks[pIndex]
                   const prevBonusApplied = prevRound.bonusApplied?.[pIndex] ?? false
 
-                  if (prevCardsDealt === 1) {
+                  // In classic mode, 1-card rounds reset consecutive count
+                  // In alternative mode, 1-card rounds count towards consecutive
+                  if (prevCardsDealt === 1 && (prev.gameMode || "classic") === "classic") {
                     state = { correct: 0, wrong: 0 }
                   } else {
                     state = updateConsecutive(prevBid, prevTricks, state, prevBonusApplied)

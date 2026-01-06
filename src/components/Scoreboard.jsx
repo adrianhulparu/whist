@@ -6,13 +6,13 @@ import { getCardsForRound, getFirstBidder } from "@/lib/gameLogic"
 import { cn } from "@/lib/utils"
 
 export function Scoreboard({ gameState, onEditRound }) {
-  const { players, rounds, currentRound, bids, phase } = gameState
+  const { players, rounds, currentRound, bids, phase, gameMode } = gameState
   const [compact, setCompact] = useState(false)
   const [editModal, setEditModal] = useState(null)
 
   const handleLongPress = (roundIndex, playerIndex, bid, tricks) => {
     if (!rounds[roundIndex]?.completed || !onEditRound) return
-    const cardsDealt = getCardsForRound(roundIndex, players.length)
+    const cardsDealt = getCardsForRound(roundIndex, players.length, gameMode || "classic")
     setEditModal({
       roundIndex,
       playerIndex,
@@ -38,7 +38,7 @@ export function Scoreboard({ gameState, onEditRound }) {
     const round = rounds[roundIndex]
     if (!round || !round.completed) return false
 
-    const cardsDealt = getCardsForRound(roundIndex, players.length)
+    const cardsDealt = getCardsForRound(roundIndex, players.length, gameMode || "classic")
     const totalBids = round.bids?.reduce((sum, bid) => sum + bid, 0) ?? 0
     const totalTricks = round.tricks?.reduce((sum, trick) => sum + (trick ?? 0), 0) ?? 0
 
@@ -58,11 +58,13 @@ export function Scoreboard({ gameState, onEditRound }) {
     const tricks = round.tricks[playerIndex]
     const isCorrect = bid === tricks
     const bonusApplied = round.bonusApplied?.[playerIndex] ?? false
-    const cardsDealt = getCardsForRound(roundIndex, players.length)
+    const cardsDealt = getCardsForRound(roundIndex, players.length, gameMode || "classic")
     const isOneCardRound = cardsDealt === 1
+    // In alternative mode, 1-card rounds can have bonuses. In classic mode, they cannot.
+    const canHaveBonus = !isOneCardRound || gameMode === "alternative"
 
     // Check if this round had bonus/penalty applied (5th consecutive)
-    if (bonusApplied && !isOneCardRound) {
+    if (bonusApplied && canHaveBonus) {
       if (isCorrect) {
         return "bg-yellow-500 text-white font-bold"
       } else {
@@ -112,7 +114,7 @@ export function Scoreboard({ gameState, onEditRound }) {
             </thead>
             <tbody>
               {rounds.map((round, roundIndex) => {
-                const cardsDealt = getCardsForRound(roundIndex, players.length)
+                const cardsDealt = getCardsForRound(roundIndex, players.length, gameMode || "classic")
                 const firstBidder = getFirstBidder(roundIndex, players.length)
 
                 const hasWarning = checkRoundValidation(roundIndex)
