@@ -40,7 +40,6 @@ export function PlayerSetup({ onStartGame }) {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle>Adauga numele jucatorilor</CardTitle>
         <CardDescription>
           Adauga numele jucatorilor in ordine contrar acelor ceasornicului, incepand cu primul care imparte.
         </CardDescription>

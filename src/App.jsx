@@ -96,48 +96,60 @@ function App() {
     })
   }
 
-  const handleTricks = (trick) => {
+  const handleSelectPlayer = (playerIndex) => {
+    updateGameState((prev) => ({
+      ...prev,
+      selectedPlayerIndex: playerIndex
+    }))
+  }
+
+  const handleTricks = (trick, playerIndex = null) => {
     updateGameState((prev) => {
       const round = prev.rounds[prev.currentRound]
       const trickOrder = round.trickOrder || []
-      const currentTrickIndex = prev.currentTrickPlayerIndex ?? 0
       
-      // Build tricks array in player order (not trick order)
-      let newTricks = [...prev.tricks]
-      if (newTricks.length <= currentTrickIndex) {
-        // Initialize tricks array if needed
-        newTricks = Array(prev.players.length).fill(null)
-        // Fill in all previous tricks
-        for (let i = 0; i < currentTrickIndex; i++) {
-          const playerIndex = trickOrder[i]
-          if (prev.tricks[i] !== null && prev.tricks[i] !== undefined) {
-            newTricks[playerIndex] = prev.tricks[i]
-          }
-        }
+      // Use provided playerIndex or calculate from trickOrder
+      let targetPlayerIndex = playerIndex
+      if (targetPlayerIndex === null) {
+        const currentTrickIndex = prev.currentTrickPlayerIndex ?? 0
+        targetPlayerIndex = trickOrder[currentTrickIndex] ?? currentTrickIndex
       }
       
-      const playerIndex = trickOrder[currentTrickIndex]
-      newTricks[playerIndex] = trick
+      // Initialize tricks array if needed (in player order, not trick order)
+      let newTricks = Array(prev.players.length).fill(null)
+      if (prev.tricks && Array.isArray(prev.tricks)) {
+        prev.tricks.forEach((t, idx) => {
+          if (t !== null && t !== undefined) {
+            newTricks[idx] = t
+          }
+        })
+      }
+      
+      // Set the trick for the selected player
+      newTricks[targetPlayerIndex] = trick
       
       const cardsDealt = getCardsForRound(prev.currentRound, prev.players.length)
       const totalTricksSoFar = newTricks.filter(t => t !== null && t !== undefined).reduce((sum, t) => sum + t, 0)
-      const remainingCount = trickOrder.length - currentTrickIndex - 1
       
-      // Auto-fill last player if we're on second-to-last and can calculate
-      if (remainingCount === 1 && currentTrickIndex === trickOrder.length - 2) {
-        const lastPlayerIndex = trickOrder[trickOrder.length - 1]
-        const lastPlayerTrick = Math.max(0, cardsDealt - totalTricksSoFar)
-        newTricks[lastPlayerIndex] = lastPlayerTrick
-      }
-      // If total tricks equals cards dealt, auto-fill remaining players with 0
-      else if (totalTricksSoFar === cardsDealt && remainingCount > 0) {
-        for (let i = currentTrickIndex + 1; i < trickOrder.length; i++) {
-          const remainingPlayerIndex = trickOrder[i]
-          newTricks[remainingPlayerIndex] = 0
-        }
+      // Find players without tricks entered
+      const playersWithoutTricks = trickOrder.filter((playerIdx) => {
+        return newTricks[playerIdx] === null || newTricks[playerIdx] === undefined
+      })
+      
+      // Auto-fill logic
+      if (playersWithoutTricks.length === 1) {
+        // Only one player left - auto-fill remaining tricks
+        const lastPlayerIndex = playersWithoutTricks[0]
+        const remainingTricks = Math.max(0, cardsDealt - totalTricksSoFar)
+        newTricks[lastPlayerIndex] = remainingTricks
+      } else if (totalTricksSoFar === cardsDealt && playersWithoutTricks.length > 0) {
+        // Total tricks equals cards dealt - fill remaining with 0
+        playersWithoutTricks.forEach((playerIdx) => {
+          newTricks[playerIdx] = 0
+        })
       }
 
-      const allTricksComplete = currentTrickIndex >= trickOrder.length - 1 || newTricks.filter(t => t !== null && t !== undefined).length === prev.players.length
+      const allTricksComplete = newTricks.every(t => t !== null && t !== undefined)
 
       if (allTricksComplete) {
         // Calculate scores
@@ -220,6 +232,7 @@ function App() {
           ...prev,
           tricks: [],
           currentTrickPlayerIndex: 0,
+          selectedPlayerIndex: undefined,
           bids: [],
           currentRound: isGameComplete ? roundIndex : nextRound,
           phase: isGameComplete ? "complete" : "dealer",
@@ -227,10 +240,20 @@ function App() {
         }
       }
 
+      // Find next player without tricks following the trickOrder
+      let nextPlayerIndex = undefined
+      for (let i = 0; i < trickOrder.length; i++) {
+        const playerIdx = trickOrder[i]
+        if (newTricks[playerIdx] === null || newTricks[playerIdx] === undefined) {
+          nextPlayerIndex = playerIdx
+          break
+        }
+      }
+
       return {
         ...prev,
         tricks: newTricks,
-        currentTrickPlayerIndex: currentTrickIndex + 1,
+        selectedPlayerIndex: nextPlayerIndex,
       }
     })
   }
@@ -405,6 +428,7 @@ function App() {
           bids: [],
           tricks: [],
           currentTrickPlayerIndex: 0,
+          selectedPlayerIndex: undefined,
           phase: "dealer",
           rounds: updatedRounds,
         }
@@ -465,6 +489,7 @@ function App() {
               onBid={handleBid}
               onTricks={handleTricks}
               onReplayRound={handleReplayRound}
+              onSelectPlayer={handleSelectPlayer}
             />
           </TabsContent>
           <TabsContent value="scoreboard" className="mt-0 flex-1 min-h-0 w-full max-w-full">
